@@ -1,0 +1,108 @@
+#!/bin/bash
+
+set -e
+source "/usr/local/lib/mkp_utils.sh"
+
+# ERRORS
+
+if [ $# -lt 1 ]; then
+    echo "Error: mkp: not enough arguments | mkp <options> <name>"
+    exit 1
+fi
+
+if [ $# -gt 2 ]; then
+    echo "Error: mkp: too many arguments | mkp <options> <name>"
+    exit 1
+fi
+
+# CASES
+
+case "$1" in
+    -c)
+        if [ -z "$2" ]; then
+            echo "Error: no project name provided."
+            echo "Usage: $0 <option> <project-name>"
+            exit 1
+        fi
+
+        if [ -d "$2" ]; then
+            echo "Error: folder '$2' already exists."
+            exit 1
+        fi
+
+        echo "Setting up $2 project folder.."
+        mkdir "$2" || {
+            echo "Error: mkdir failed."
+            exit 1
+        }
+
+        cd "$2" || exit 1
+
+        mkdir src || {
+            echo "Error: mkdir failed."
+            exit 1
+        }
+
+        git init || {
+            echo "Error: git init failed."
+            exit 1
+        }
+
+        create_main_c
+        create_main_h
+        create_makefile
+        create_readme
+
+        echo "Done"
+        ;;
+
+    setrem)
+        if [ -z "$2" ]; then
+            echo "Error: no remote repository url provided"
+            echo "Usage: $0 setrem <url>"
+            exit 1
+        fi
+
+        if [ ! -d ".git" ]; then
+            echo "Error: not a git repository"
+            exit 1
+        fi
+
+        echo "Setting up remote repository.."
+
+        if [ -e "README.md" ]; then
+            git add README.md
+        else
+            create_readme
+            git add README.md
+        fi
+
+        git commit -m "first commit" || {
+            echo "Error: failed to commit"
+            exit 1
+        }
+
+        git branch -M main || {
+            echo "Error: failed to set branch"
+            exit 1
+        }
+
+        if git remote get-url origin > /dev/null 2>&1; then
+            git remote set-url origin "$2"
+        else
+            git remote add origin "$2" || {
+                echo "Error: failed to add remote"
+                exit 1
+            }
+        fi
+
+        git push -u origin main || {
+            exit 1
+        }
+        ;;
+
+    *)
+        echo "Error: mkp: $1: Unknown option"
+        exit 1
+        ;;
+esac
